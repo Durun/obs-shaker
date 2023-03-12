@@ -49,23 +49,24 @@ source_info = {
         end
 
         -- Retrieves the shader uniform variables
-        data.params = {
+        data.uniforms = {
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
-            amplitude = obs.gs_effect_get_param_by_name(data.effect, "amplitude"),
+            offset = obs.gs_effect_get_param_by_name(data.effect, "offset"),
         }
         return data
     end,
 
     -- Creates the implementation data for the source
-    create = function(_, source)
-        -- Initializes the custom data table
+    create = function(settings, source)
         local data = {
             source = source, -- Keeps a reference to this filter as a source object
             width = 1, -- Dummy value during initialization phase
             height = 1,
-            amplitude = 1,
+            offset = obs.vec2(),
         }
+        -- Initializes the custom data table
+        source_info.update(data, settings)
         return source_info.compile(data)
     end,
 
@@ -100,21 +101,29 @@ source_info = {
 
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
 
-        -- Bind params
-        obs.gs_effect_set_int(data.params.width, data.width)
-        obs.gs_effect_set_int(data.params.height, data.height)
-        obs.gs_effect_set_float(data.params.amplitude, data.amplitude)
+        -- Bind uniforms
+        obs.gs_effect_set_int(data.uniforms.width, data.width)
+        obs.gs_effect_set_int(data.uniforms.height, data.height)
+        obs.vec2_set(data.offset,
+                data.amplitude * math.sin(os.clock()*data.freqX*math.pi),
+                data.amplitude * math.sin(os.clock()*data.freqY*math.pi)
+        )
+        obs.gs_effect_set_vec2(data.uniforms.offset, data.offset)
 
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
     end,
 
     get_properties = function(_)
         local props = obs.obs_properties_create()
-        obs.obs_properties_add_float_slider(props, "amplitude", "Amplitude", -1.0, 1.0, 0.01)
+        obs.obs_properties_add_float_slider(props, "amplitude", "Amplitude", 0, 0.05, 0.0001)
+        obs.obs_properties_add_float_slider(props, "freqX", "freqX", 0, 100, 0.01)
+        obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 100, 0.01)
         return props
     end,
 
     update = function(data, settings)
         data.amplitude = obs.obs_data_get_double(settings, "amplitude")
+        data.freqX = obs.obs_data_get_double(settings, "freqX")
+        data.freqY = obs.obs_data_get_double(settings, "freqY")
     end,
 }

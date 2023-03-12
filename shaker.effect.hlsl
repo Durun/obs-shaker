@@ -12,7 +12,7 @@ uniform int width;
 uniform int height;
 
 // General properties
-uniform float amplitude;
+uniform float2 offset;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -50,7 +50,6 @@ pixel_data vertex_shader(vertex_data vertex)
 // Pixel shader used to compute an RGBA color at a given pixel position
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
-    float2 offset = float2(amplitude, 0.0);
     float4 color = image.Sample(linear_clamp, pixel.uv - offset);
     return color;
 }
