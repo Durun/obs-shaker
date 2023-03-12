@@ -40,7 +40,7 @@ getter_info = {
 
         -- Compiles the effect
         obs.obs_enter_graphics()
-        local effect_file_path = script_path() .. 'id.effect.hlsl'
+        local effect_file_path = script_path() .. 'projection.effect.hlsl'
         data.effect = obs.gs_effect_create_from_file(effect_file_path, nil)
         obs.obs_leave_graphics()
 
@@ -79,16 +79,13 @@ getter_info = {
     video_render = function(data)
         local parent = obs.obs_filter_get_parent(data.source)
         data.width = obs.obs_source_get_base_width(parent)
-        data.height = obs.obs_source_get_base_height(parent)
+
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
-
-        getter_info.texture = obs.gs_get_render_target()
-
         -- Bind uniforms
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
-
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
+        getter_info.texture = obs.gs_get_render_target()
     end
 }
 
@@ -181,8 +178,8 @@ source_info = {
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
         obs.vec2_set(data.offset,
-                data.amplitude * math.sin(os.clock()*data.freqX*math.pi),
-                data.amplitude * math.sin(os.clock()*data.freqY*math.pi)
+                data.amplitude * math.sin(os.clock() * data.freqX * math.pi),
+                data.amplitude * math.sin(os.clock() * data.freqY * math.pi)
         )
         obs.gs_effect_set_vec2(data.uniforms.offset, data.offset)
 

@@ -46,8 +46,13 @@ pixel_data vertex_shader(vertex_data vertex)
 // Pixel shader used to compute an RGBA color at a given pixel position
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
-    float4 color = image.Sample(linear_clamp, pixel.uv);
-    return color;
+    const int resolution = 128;
+    float dv = 1.0 / resolution;
+    float3 color = float3(0, 0, 0);
+    for (int i = 0; i < resolution; i++) {
+        color += image.Sample(linear_clamp, float2(pixel.uv.x, i * dv)).xyz;
+    }
+    return float4(color.xyz / float3(resolution, resolution, resolution), 1);
 }
 
 technique Draw
