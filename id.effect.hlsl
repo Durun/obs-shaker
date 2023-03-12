@@ -1,7 +1,6 @@
 // OBS-specific syntax adaptation to HLSL standard to avoid errors reported by the code editor
 #define SamplerState sampler_state
 #define Texture2D texture2d
-#define PI 3.141592653589793238
 
 // Uniform variables set by OBS (required)
 uniform float4x4 ViewProj; // View-projection matrix used in the vertex shader
@@ -10,10 +9,6 @@ uniform Texture2D image;   // Texture containing the source picture// Constants
 // Size of the source picture
 uniform int width;
 uniform int height;
-
-// General properties
-uniform Texture2D spectrum;
-uniform float2 offset;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -51,9 +46,8 @@ pixel_data vertex_shader(vertex_data vertex)
 // Pixel shader used to compute an RGBA color at a given pixel position
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
-    float4 color = image.Sample(linear_clamp, pixel.uv - offset);
-    float4 color2 = spectrum.Sample(linear_clamp, pixel.uv - offset);
-    return color * color2;
+    float4 color = image.Sample(linear_clamp, pixel.uv);
+    return color;
 }
 
 technique Draw
