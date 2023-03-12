@@ -1,19 +1,16 @@
 // OBS-specific syntax adaptation to HLSL standard to avoid errors reported by the code editor
 #define SamplerState sampler_state
 #define Texture2D texture2d
-#define PI 3.141592653589793238
 
 // Uniform variables set by OBS (required)
 uniform float4x4 ViewProj; // View-projection matrix used in the vertex shader
 uniform Texture2D image;   // Texture containing the source picture// Constants
 
+uniform float f1;
+
 // Size of the source picture
 uniform int width;
 uniform int height;
-
-// General properties
-uniform Texture2D spectrum;
-uniform float2 offset;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -48,37 +45,23 @@ pixel_data vertex_shader(vertex_data vertex)
     return pixel;
 }
 
-struct Band
-{
-    float all;
-    float hi;
-    float lo;
-};
-
-Band decodeSpectrum(Texture2D spectrum)
-{
-    Band band;
-    band.lo = spectrum.Sample(linear_clamp, float2(0, 0)).x;
-    band.hi = spectrum.Sample(linear_clamp, float2(0.9, 0)).x;
-    band.all = band.lo + band.hi;
-    return band;
-}
-
 // Pixel shader used to compute an RGBA color at a given pixel position
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
-    Band band = decodeSpectrum(spectrum);
-    float3 th = (2*PI/3)*float3(0, 1, 2);
-    float2 er = float2(cos(th.r), sin(th.r));
-    float2 eg = float2(cos(th.g), sin(th.g));
-    float2 eb = float2(cos(th.b), sin(th.b));
-    float4 color = image.Sample(linear_clamp, pixel.uv - band.all*offset);
-    return float4(
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*er).r,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*eg).g,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*eb).b,
-        1
-    );
+    float du = 1.0 / width;
+    int n1 = int(width * f1);
+    float v = 0;
+    if (pixel.uv.x < 0.5) {
+        for (int i = 0; i < n1; i++) {
+            v += image.Sample(linear_clamp, float2(i * du, 0)).x;
+        }
+    } else {
+        for (int i = n1; i < width; i++) {
+            v += image.Sample(linear_clamp, float2(i * du, 0)).x;
+        }
+    }
+    v /= width;
+    return float4(v, v, v, 1);
 }
 
 technique Draw
