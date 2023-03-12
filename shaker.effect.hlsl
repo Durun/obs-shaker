@@ -14,6 +14,9 @@ uniform int height;
 // General properties
 uniform Texture2D spectrum;
 uniform float2 offset;
+uniform float amplitude_color;
+uniform float pow_all;
+uniform float pow_lo;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -72,11 +75,12 @@ float4 pixel_shader(pixel_data pixel) : TARGET
     float2 er = float2(cos(th.r), sin(th.r));
     float2 eg = float2(cos(th.g), sin(th.g));
     float2 eb = float2(cos(th.b), sin(th.b));
-    float4 color = image.Sample(linear_clamp, pixel.uv - band.all*offset);
+    band.all = pow(band.all, pow_all);
+    band.lo = pow(band.lo, pow_lo);
     return float4(
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*er).r,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*eg).g,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - band.lo*eb).b,
+        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*er).r,
+        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*eg).g,
+        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*eb).b,
         1
     );
 }

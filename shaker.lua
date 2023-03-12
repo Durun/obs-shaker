@@ -203,6 +203,9 @@ source_info = {
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
             offset = obs.gs_effect_get_param_by_name(data.effect, "offset"),
+            amplitude_color = obs.gs_effect_get_param_by_name(data.effect, "amplitude_color"),
+            pow_all = obs.gs_effect_get_param_by_name(data.effect, "pow_all"),
+            pow_lo = obs.gs_effect_get_param_by_name(data.effect, "pow_lo"),
             spectrum = obs.gs_effect_get_param_by_name(data.effect, "spectrum"),
         }
         return data
@@ -259,25 +262,34 @@ source_info = {
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
         obs.vec2_set(data.offset,
-                data.amplitude * math.sin(os.clock() * data.freqX * math.pi),
-                data.amplitude * math.sin(os.clock() * data.freqY * math.pi)
+                data.amplitude_all * math.sin(os.clock() * data.freqX * math.pi),
+                data.amplitude_all * math.sin(os.clock() * data.freqY * math.pi)
         )
         obs.gs_effect_set_vec2(data.uniforms.offset, data.offset)
+        obs.gs_effect_set_float(data.uniforms.amplitude_color, data.amplitude_color)
+        obs.gs_effect_set_float(data.uniforms.pow_all, data.pow_all)
+        obs.gs_effect_set_float(data.uniforms.pow_lo, data.pow_lo)
 
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
     end,
 
     get_properties = function(_)
         local props = obs.obs_properties_create()
-        obs.obs_properties_add_float_slider(props, "amplitude", "Amplitude", 0, 0.05, 0.0001)
-        obs.obs_properties_add_float_slider(props, "freqX", "freqX", 0, 100, 0.01)
-        obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 100, 0.01)
+        obs.obs_properties_add_float_slider(props, "amplitude_all", "Amplitude(all)", 0, 10, 0.0001)
+        obs.obs_properties_add_float_slider(props, "freqX", "freqX", 0, 50, 0.01)
+        obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 50, 0.01)
+        obs.obs_properties_add_float_slider(props, "pow_all", "pow(all)", 0, 4, 0.01)
+        obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(color)", 0, 10, 0.01)
+        obs.obs_properties_add_float_slider(props, "pow_lo", "pow(lo)", 0, 4, 0.01)
         return props
     end,
 
     update = function(data, settings)
-        data.amplitude = obs.obs_data_get_double(settings, "amplitude")
+        data.amplitude_all = obs.obs_data_get_double(settings, "amplitude_all")
         data.freqX = obs.obs_data_get_double(settings, "freqX")
         data.freqY = obs.obs_data_get_double(settings, "freqY")
+        data.pow_all = obs.obs_data_get_double(settings, "pow_all")
+        data.amplitude_color = obs.obs_data_get_double(settings, "amplitude_color")
+        data.pow_lo = obs.obs_data_get_double(settings, "pow_lo")
     end,
 }
