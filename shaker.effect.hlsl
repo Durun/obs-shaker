@@ -13,10 +13,12 @@ uniform int height;
 
 // General properties
 uniform Texture2D spectrum;
-uniform float2 offset;
+uniform float2 offset_hi;
+uniform float2 offset_lo;
 uniform float amplitude_color;
-uniform float pow_all;
-uniform float pow_lo;
+uniform float pow_shake_hi;
+uniform float pow_shake_lo;
+uniform float pow_color;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -53,7 +55,6 @@ pixel_data vertex_shader(vertex_data vertex)
 
 struct Band
 {
-    float all;
     float hi;
     float lo;
 };
@@ -61,9 +62,8 @@ struct Band
 Band decodeSpectrum(Texture2D spectrum)
 {
     Band band;
-    band.lo = spectrum.Sample(linear_clamp, float2(0, 0)).x;
     band.hi = spectrum.Sample(linear_clamp, float2(0.9, 0)).x;
-    band.all = band.lo + band.hi;
+    band.lo = spectrum.Sample(linear_clamp, float2(0.1, 0)).x;
     return band;
 }
 
@@ -75,12 +75,12 @@ float4 pixel_shader(pixel_data pixel) : TARGET
     float2 er = float2(cos(th.r), sin(th.r));
     float2 eg = float2(cos(th.g), sin(th.g));
     float2 eb = float2(cos(th.b), sin(th.b));
-    band.all = pow(band.all, pow_all);
-    band.lo = pow(band.lo, pow_lo);
+    float2 offset_shake = pow(band.hi, pow_shake_hi)*offset_hi + pow(band.lo, pow_shake_lo)*offset_lo;
+    float amp_color = amplitude_color * pow(band.lo, pow_color);
     return float4(
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*er).r,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*eg).g,
-        image.Sample(linear_clamp, pixel.uv - band.all*offset - amplitude_color*band.lo*eb).b,
+        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*er).r,
+        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*eg).g,
+        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*eb).b,
         1
     );
 }

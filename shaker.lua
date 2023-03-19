@@ -108,6 +108,7 @@ summarizer_info = {
             width = 32,
             height = 32,
         }
+        summarizer_info.update(data, settings)
 
         -- Compiles the effect
         obs.obs_enter_graphics()
@@ -127,7 +128,6 @@ summarizer_info = {
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
             f1 = obs.gs_effect_get_param_by_name(data.effect, "f1"),
         }
-        summarizer_info.update(data, settings)
         return data
     end,
 
@@ -202,10 +202,12 @@ source_info = {
         data.uniforms = {
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
-            offset = obs.gs_effect_get_param_by_name(data.effect, "offset"),
+            offset_hi = obs.gs_effect_get_param_by_name(data.effect, "offset_hi"),
+            offset_lo = obs.gs_effect_get_param_by_name(data.effect, "offset_lo"),
+            pow_shake_hi = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_hi"),
+            pow_shake_lo = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_lo"),
             amplitude_color = obs.gs_effect_get_param_by_name(data.effect, "amplitude_color"),
-            pow_all = obs.gs_effect_get_param_by_name(data.effect, "pow_all"),
-            pow_lo = obs.gs_effect_get_param_by_name(data.effect, "pow_lo"),
+            pow_color = obs.gs_effect_get_param_by_name(data.effect, "pow_color"),
             spectrum = obs.gs_effect_get_param_by_name(data.effect, "spectrum"),
         }
         return data
@@ -217,7 +219,8 @@ source_info = {
             source = source, -- Keeps a reference to this filter as a source object
             width = 1, -- Dummy value during initialization phase
             height = 1,
-            offset = obs.vec2(),
+            offset_hi = obs.vec2(),
+            offset_lo = obs.vec2(),
         }
         -- Initializes the custom data table
         source_info.update(data, settings)
@@ -252,6 +255,14 @@ source_info = {
         local parent = obs.obs_filter_get_parent(data.source)
         data.width = obs.obs_source_get_base_width(parent)
         data.height = obs.obs_source_get_base_height(parent)
+        obs.vec2_set(data.offset_hi,
+                data.amplitude_hi_shake * math.sin(os.clock() * data.freqX * math.pi),
+                data.amplitude_hi_shake * math.sin(os.clock() * data.freqY * math.pi)
+        )
+        obs.vec2_set(data.offset_lo,
+                data.amplitude_lo_shake * math.sin(os.clock() * data.freqX * math.pi),
+                data.amplitude_lo_shake * math.sin(os.clock() * data.freqY * math.pi)
+        )
 
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
 
@@ -261,35 +272,37 @@ source_info = {
         -- Bind uniforms
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
-        obs.vec2_set(data.offset,
-                data.amplitude_all * math.sin(os.clock() * data.freqX * math.pi),
-                data.amplitude_all * math.sin(os.clock() * data.freqY * math.pi)
-        )
-        obs.gs_effect_set_vec2(data.uniforms.offset, data.offset)
+        obs.gs_effect_set_vec2(data.uniforms.offset_hi, data.offset_hi)
+        obs.gs_effect_set_vec2(data.uniforms.offset_lo, data.offset_lo)
+        obs.gs_effect_set_float(data.uniforms.pow_shake_hi, data.pow_shake_hi)
+        obs.gs_effect_set_float(data.uniforms.pow_shake_lo, data.pow_shake_lo)
         obs.gs_effect_set_float(data.uniforms.amplitude_color, data.amplitude_color)
-        obs.gs_effect_set_float(data.uniforms.pow_all, data.pow_all)
-        obs.gs_effect_set_float(data.uniforms.pow_lo, data.pow_lo)
+        obs.gs_effect_set_float(data.uniforms.pow_color, data.pow_color)
 
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
     end,
 
     get_properties = function(_)
         local props = obs.obs_properties_create()
-        obs.obs_properties_add_float_slider(props, "amplitude_all", "Amplitude(all)", 0, 10, 0.0001)
+        obs.obs_properties_add_float_slider(props, "amplitude_hi_shake", "Amplitude(hi->shake)", 0, 10, 0.0001)
+        obs.obs_properties_add_float_slider(props, "amplitude_lo_shake", "Amplitude(lo->shake)", 0, 10, 0.0001)
+        obs.obs_properties_add_float_slider(props, "pow_shake_hi", "pow(hi->shake)", 0, 4, 0.01)
+        obs.obs_properties_add_float_slider(props, "pow_shake_lo", "pow(lo->shake)", 0, 4, 0.01)
         obs.obs_properties_add_float_slider(props, "freqX", "freqX", 0, 50, 0.01)
         obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 50, 0.01)
-        obs.obs_properties_add_float_slider(props, "pow_all", "pow(all)", 0, 4, 0.01)
-        obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(color)", 0, 10, 0.01)
-        obs.obs_properties_add_float_slider(props, "pow_lo", "pow(lo)", 0, 4, 0.01)
+        obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(lo->color)", 0, 10, 0.01)
+        obs.obs_properties_add_float_slider(props, "pow_color", "pow(lo->color)", 0, 4, 0.01)
         return props
     end,
 
     update = function(data, settings)
-        data.amplitude_all = obs.obs_data_get_double(settings, "amplitude_all")
+        data.amplitude_hi_shake = obs.obs_data_get_double(settings, "amplitude_hi_shake")
+        data.amplitude_lo_shake = obs.obs_data_get_double(settings, "amplitude_lo_shake")
+        data.pow_shake_hi = obs.obs_data_get_double(settings, "pow_shake_hi")
+        data.pow_shake_lo = obs.obs_data_get_double(settings, "pow_shake_lo")
         data.freqX = obs.obs_data_get_double(settings, "freqX")
         data.freqY = obs.obs_data_get_double(settings, "freqY")
-        data.pow_all = obs.obs_data_get_double(settings, "pow_all")
         data.amplitude_color = obs.obs_data_get_double(settings, "amplitude_color")
-        data.pow_lo = obs.obs_data_get_double(settings, "pow_lo")
+        data.pow_color = obs.obs_data_get_double(settings, "pow_color")
     end,
 }
