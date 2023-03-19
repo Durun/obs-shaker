@@ -17,6 +17,8 @@ uniform int resolution_blur;
 uniform Texture2D spectrum;
 uniform float2 offset_hi;
 uniform float2 offset_lo;
+uniform float2 prev_offset_hi;
+uniform float2 prev_offset_lo;
 uniform float amplitude_color;
 uniform float pow_shake_hi;
 uniform float pow_shake_lo;
@@ -87,7 +89,7 @@ struct Coord_rgb
     float2 b;
 };
 
-Coord_rgb shake(pixel_data pixel, int history) {
+Coord_rgb shake(pixel_data pixel, int history, float2 offset_hi, float2 offset_lo) {
     Coord_rgb coord;
     Band band = decodeSpectrum(spectrum, history);
     float3 th = (2*PI/3)*float3(0, 1, 2);
@@ -115,8 +117,8 @@ Coord_rgb shake(pixel_data pixel, int history) {
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
     // return spectrum.Sample(point_clamp, pixel.uv); // for Debug
-    Coord_rgb coord_now = shake(pixel, 0);
-    Coord_rgb coord_prev = shake(pixel, 1);
+    Coord_rgb coord_now = shake(pixel, 0, offset_hi, offset_lo);
+    Coord_rgb coord_prev = shake(pixel, 1, prev_offset_hi, prev_offset_lo);
 
     float3 color = float3(0, 0, 0);
     for (int i=0; i<resolution_blur; i++) {

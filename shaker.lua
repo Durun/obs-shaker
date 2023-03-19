@@ -218,6 +218,8 @@ source_info = {
             history_height = obs.gs_effect_get_param_by_name(data.effect, "history_height"),
             offset_hi = obs.gs_effect_get_param_by_name(data.effect, "offset_hi"),
             offset_lo = obs.gs_effect_get_param_by_name(data.effect, "offset_lo"),
+            prev_offset_hi = obs.gs_effect_get_param_by_name(data.effect, "prev_offset_hi"),
+            prev_offset_lo = obs.gs_effect_get_param_by_name(data.effect, "prev_offset_lo"),
             pow_shake_hi = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_hi"),
             pow_shake_lo = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_lo"),
             amplitude_color = obs.gs_effect_get_param_by_name(data.effect, "amplitude_color"),
@@ -272,14 +274,8 @@ source_info = {
         local parent = obs.obs_filter_get_parent(data.source)
         data.width = obs.obs_source_get_base_width(parent)
         data.height = obs.obs_source_get_base_height(parent)
-        obs.vec2_set(data.offset_hi,
-                data.amplitude_hi_shake * math.sin(os.clock() * data.freqX * math.pi),
-                data.amplitude_hi_shake * math.sin(os.clock() * data.freqY * math.pi)
-        )
-        obs.vec2_set(data.offset_lo,
-                data.amplitude_lo_shake * math.sin(os.clock() * data.freqX * math.pi),
-                data.amplitude_lo_shake * math.sin(os.clock() * data.freqY * math.pi)
-        )
+        local ex = math.cos(os.clock() * data.freqX * math.pi)
+        local ey = math.sin(os.clock() * data.freqY * math.pi)
 
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
 
@@ -291,6 +287,16 @@ source_info = {
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
         obs.gs_effect_set_int(data.uniforms.history_height, summarizer_info.history_height)
+        obs.gs_effect_set_vec2(data.uniforms.prev_offset_hi, data.offset_hi)
+        obs.gs_effect_set_vec2(data.uniforms.prev_offset_lo, data.offset_lo)
+        obs.vec2_set(data.offset_hi,
+                data.amplitude_hi_shake * ex,
+                data.amplitude_hi_shake * ey
+        )
+        obs.vec2_set(data.offset_lo,
+                data.amplitude_lo_shake * ex,
+                data.amplitude_lo_shake * ey
+        )
         obs.gs_effect_set_vec2(data.uniforms.offset_hi, data.offset_hi)
         obs.gs_effect_set_vec2(data.uniforms.offset_lo, data.offset_lo)
         obs.gs_effect_set_float(data.uniforms.pow_shake_hi, data.pow_shake_hi)
