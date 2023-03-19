@@ -7,15 +7,17 @@ uniform float4x4 ViewProj; // View-projection matrix used in the vertex shader
 uniform Texture2D image;   // Texture containing the source picture// Constants
 
 uniform float f1;
+uniform Texture2D texture_self;
 
 // Size of the source picture
+uniform int getter_width;
 uniform int width;
 uniform int height;
 
 // Interpolation method and wrap mode for sampling a texture
-SamplerState linear_clamp
+SamplerState point_clamp
 {
-    Filter      = Linear;   // Anisotropy / Point / Linear
+    Filter      = Point;    // Anisotropy / Point / Linear
     AddressU    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
     AddressV    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
     BorderColor = 00000000; // Used only with Border edges (optional)
@@ -48,20 +50,26 @@ pixel_data vertex_shader(vertex_data vertex)
 // Pixel shader used to compute an RGBA color at a given pixel position
 float4 pixel_shader(pixel_data pixel) : TARGET
 {
-    float du = 1.0 / width;
-    int n1 = int(width * f1);
-    float v = 0;
-    if (pixel.uv.x < 0.5) {
-        for (int i = 0; i < n1; i++) {
-            v += image.Sample(linear_clamp, float2(i * du, 0)).x;
+    float dv = 1.0 / height;
+    if (pixel.uv.y < dv) {
+        float du = 1.0 / getter_width;
+        int n1 = int(getter_width * f1);
+        float v = 0;
+        if (pixel.uv.x < 0.5) {
+            for (int i = 0; i < n1; i++) {
+                v += image.Sample(point_clamp, float2(i * du, 0)).r;
+            }
+            v /= n1;
+        } else {
+            for (int i = n1; i < getter_width; i++) {
+                v += image.Sample(point_clamp, float2(i * du, 0)).r;
+            }
+            v /= getter_width - n1;
         }
+        return float4(v, v, v, 1);
     } else {
-        for (int i = n1; i < width; i++) {
-            v += image.Sample(linear_clamp, float2(i * du, 0)).x;
-        }
+        return texture_self.Sample(point_clamp, float2(pixel.uv.x, pixel.uv.y - dv));
     }
-    v /= width;
-    return float4(v, v, v, 1);
 }
 
 technique Draw

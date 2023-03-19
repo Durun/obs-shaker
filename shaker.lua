@@ -29,6 +29,7 @@ getter_info = {
         return "Shaker.getter"
     end,
 
+    width = 1,
     texture = nil,
 
     -- Creates the implementation data for the source
@@ -80,6 +81,7 @@ getter_info = {
     video_render = function(data)
         local parent = obs.obs_filter_get_parent(data.source)
         data.width = obs.obs_source_get_base_width(parent)
+        getter_info.width = data.width
 
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
         -- Bind uniforms
@@ -94,6 +96,7 @@ summarizer_info = {
     id = 'durun.shaker.summarizer', -- Unique string identifier of the source type
     type = obs.OBS_SOURCE_TYPE_FILTER, -- INPUT or FILTER or TRANSITION
     output_flags = obs.OBS_SOURCE_VIDEO, -- Combination of VIDEO/AUDIO/ASYNC/etc
+    history_height = 8,
     get_name = function()
         -- Returns the name displayed in the list of filters
         return "Shaker.summarizer"
@@ -102,18 +105,20 @@ summarizer_info = {
     texture = nil,
 
     -- Creates the implementation data for the source
-    create = function(_, source)
+    create = function(settings, source)
         local data = {
             source = source, -- Keeps a reference to this filter as a source object
-            width = 32,
-            height = 32,
+            width = 2, -- bands
+            height = summarizer_info.history_height, -- history size
         }
         summarizer_info.update(data, settings)
 
         -- Compiles the effect
         obs.obs_enter_graphics()
+
         local effect_file_path = script_path() .. 'summarize.effect.hlsl'
         data.effect = obs.gs_effect_create_from_file(effect_file_path, nil)
+        data.texture_self = obs.gs_texture_create(data.width, data.height, obs.GS_RGBA, 1, nil,  bit.bor(obs.GS_DYNAMIC, obs.GS_RENDER_TARGET))
         obs.obs_leave_graphics()
 
         -- Calls the destroy function if the effect was not compiled properly
@@ -124,9 +129,11 @@ summarizer_info = {
         end
 
         data.uniforms = {
+            getter_width = obs.gs_effect_get_param_by_name(data.effect, "getter_width"),
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
             f1 = obs.gs_effect_get_param_by_name(data.effect, "f1"),
+            texture_self = obs.gs_effect_get_param_by_name(data.effect, "texture_self"),
         }
         return data
     end,
@@ -138,6 +145,8 @@ summarizer_info = {
             obs.obs_enter_graphics()
             obs.gs_effect_destroy(data.effect)
             data.effect = nil
+            obs.gs_texture_destroy(data.texture_self)
+            data.texture_self = nil
             obs.obs_leave_graphics()
         end
     end,
@@ -152,9 +161,12 @@ summarizer_info = {
     video_render = function(data)
         obs.obs_source_process_filter_begin(data.source, obs.GS_RGBA, obs.OBS_NO_DIRECT_RENDERING)
         -- Bind uniforms
+        obs.gs_effect_set_int(data.uniforms.getter_width, getter_info.width)
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
         obs.gs_effect_set_float(data.uniforms.f1, data.f1)
+        obs.gs_effect_set_texture(data.uniforms.texture_self, data.texture_self)
+        obs.gs_set_render_target(data.texture_self, nil)
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
         summarizer_info.texture = obs.gs_get_render_target()
     end,
@@ -202,6 +214,7 @@ source_info = {
         data.uniforms = {
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
+            history_height = obs.gs_effect_get_param_by_name(data.effect, "history_height"),
             offset_hi = obs.gs_effect_get_param_by_name(data.effect, "offset_hi"),
             offset_lo = obs.gs_effect_get_param_by_name(data.effect, "offset_lo"),
             pow_shake_hi = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_hi"),
@@ -272,6 +285,7 @@ source_info = {
         -- Bind uniforms
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
+        obs.gs_effect_set_int(data.uniforms.history_height, summarizer_info.history_height)
         obs.gs_effect_set_vec2(data.uniforms.offset_hi, data.offset_hi)
         obs.gs_effect_set_vec2(data.uniforms.offset_lo, data.offset_lo)
         obs.gs_effect_set_float(data.uniforms.pow_shake_hi, data.pow_shake_hi)
@@ -284,13 +298,13 @@ source_info = {
 
     get_properties = function(_)
         local props = obs.obs_properties_create()
-        obs.obs_properties_add_float_slider(props, "amplitude_hi_shake", "Amplitude(hi->shake)", 0, 10, 0.0001)
-        obs.obs_properties_add_float_slider(props, "amplitude_lo_shake", "Amplitude(lo->shake)", 0, 10, 0.0001)
+        obs.obs_properties_add_float_slider(props, "amplitude_hi_shake", "Amplitude(hi->shake)", 0, 5, 0.0001)
+        obs.obs_properties_add_float_slider(props, "amplitude_lo_shake", "Amplitude(lo->shake)", 0, 5, 0.0001)
         obs.obs_properties_add_float_slider(props, "pow_shake_hi", "pow(hi->shake)", 0, 4, 0.01)
         obs.obs_properties_add_float_slider(props, "pow_shake_lo", "pow(lo->shake)", 0, 4, 0.01)
         obs.obs_properties_add_float_slider(props, "freqX", "freqX", 0, 50, 0.01)
         obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 50, 0.01)
-        obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(lo->color)", 0, 10, 0.01)
+        obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(lo->color)", 0, 5, 0.01)
         obs.obs_properties_add_float_slider(props, "pow_color", "pow(lo->color)", 0, 4, 0.01)
         return props
     end,

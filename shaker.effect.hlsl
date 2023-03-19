@@ -10,6 +10,7 @@ uniform Texture2D image;   // Texture containing the source picture// Constants
 // Size of the source picture
 uniform int width;
 uniform int height;
+uniform int history_height;
 
 // General properties
 uniform Texture2D spectrum;
@@ -24,6 +25,13 @@ uniform float pow_color;
 SamplerState linear_clamp
 {
     Filter      = Linear;   // Anisotropy / Point / Linear
+    AddressU    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
+    AddressV    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
+    BorderColor = 00000000; // Used only with Border edges (optional)
+};
+SamplerState point_clamp
+{
+    Filter      = Point;    // Anisotropy / Point / Linear
     AddressU    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
     AddressV    = Clamp;    // Wrap / Clamp / Mirror / Border / MirrorOnce
     BorderColor = 00000000; // Used only with Border edges (optional)
@@ -59,30 +67,60 @@ struct Band
     float lo;
 };
 
-Band decodeSpectrum(Texture2D spectrum)
+Band decodeSpectrum(Texture2D spectrum, int history)
 {
+    float dy = 1.0 / history_height;
     Band band;
-    band.hi = spectrum.Sample(linear_clamp, float2(0.9, 0)).x;
-    band.lo = spectrum.Sample(linear_clamp, float2(0.1, 0)).x;
+    band.hi = spectrum.Sample(point_clamp, float2(0.9, history * dy)).r;
+    band.lo = spectrum.Sample(point_clamp, float2(0.1, history * dy)).r;
     return band;
 }
 
-// Pixel shader used to compute an RGBA color at a given pixel position
-float4 pixel_shader(pixel_data pixel) : TARGET
+struct Coord_rgb
 {
-    Band band = decodeSpectrum(spectrum);
+    float2 r;
+    float2 g;
+    float2 b;
+};
+
+Coord_rgb shake(pixel_data pixel, int history) {
+    Coord_rgb coord;
+    Band band = decodeSpectrum(spectrum, history);
     float3 th = (2*PI/3)*float3(0, 1, 2);
     float2 er = float2(cos(th.r), sin(th.r));
     float2 eg = float2(cos(th.g), sin(th.g));
     float2 eb = float2(cos(th.b), sin(th.b));
     float2 offset_shake = pow(band.hi, pow_shake_hi)*offset_hi + pow(band.lo, pow_shake_lo)*offset_lo;
     float amp_color = amplitude_color * pow(band.lo, pow_color);
-    return float4(
-        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*er).r,
-        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*eg).g,
-        image.Sample(linear_clamp, pixel.uv - offset_shake - amp_color*eb).b,
-        1
-    );
+    coord.r = pixel.uv - offset_shake - amp_color*er;
+    coord.g = pixel.uv - offset_shake - amp_color*eg;
+    coord.b = pixel.uv - offset_shake - amp_color*eb;
+    return coord;
+}
+
+// Pixel shader used to compute an RGBA color at a given pixel position
+float4 pixel_shader(pixel_data pixel) : TARGET
+{
+    // return spectrum.Sample(point_clamp, pixel.uv); // for Debug
+    Coord_rgb coord_now = shake(pixel, 0);
+    Coord_rgb coord_prev = shake(pixel, 1);
+
+    const int resolution = 16;
+    float3 color = float3(0, 0, 0);
+    for (int i=0; i<resolution; i++) {
+        Coord_rgb coord;
+        float blend = float(i)/resolution;
+        coord.r = coord_now.r + blend*(coord_prev.r - coord_now.r);
+        coord.g = coord_now.g + blend*(coord_prev.g - coord_now.g);
+        coord.b = coord_now.b + blend*(coord_prev.b - coord_now.b);
+        color += float3(
+            image.Sample(linear_clamp, coord.r).r,
+            image.Sample(linear_clamp, coord.g).g,
+            image.Sample(linear_clamp, coord.b).b
+        );
+    }
+    color /= resolution;
+    return float4(color, 1);
 }
 
 technique Draw
