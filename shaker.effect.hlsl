@@ -21,6 +21,9 @@ uniform float amplitude_color;
 uniform float pow_shake_hi;
 uniform float pow_shake_lo;
 uniform float pow_color;
+uniform float zoom;
+uniform float color_zoom;
+uniform float pow_zoom;
 
 // Interpolation method and wrap mode for sampling a texture
 SamplerState linear_clamp
@@ -91,11 +94,20 @@ Coord_rgb shake(pixel_data pixel, int history) {
     float2 er = float2(cos(th.r), sin(th.r));
     float2 eg = float2(cos(th.g), sin(th.g));
     float2 eb = float2(cos(th.b), sin(th.b));
+    er.x = er.x * height / width;
+    eg.x = eg.x * height / width;
+    eb.x = eb.x * height / width;
     float2 offset_shake = pow(band.hi, pow_shake_hi)*offset_hi + pow(band.lo, pow_shake_lo)*offset_lo;
     float amp_color = amplitude_color * pow(band.lo, pow_color);
-    coord.r = pixel.uv - offset_shake - amp_color*er;
-    coord.g = pixel.uv - offset_shake - amp_color*eg;
-    coord.b = pixel.uv - offset_shake - amp_color*eb;
+    float2 e_zoom = pixel.uv - float2(0.5, 0.5);
+    e_zoom.x = e_zoom.x * height / width;
+    e_zoom *= e_zoom * e_zoom;
+    e_zoom.x = e_zoom.x * width / height ;
+    float amp_zoom = zoom * pow(band.lo, pow_zoom);
+    float amp_color_zoom = color_zoom * pow(band.lo, pow_zoom);
+    coord.r = pixel.uv - offset_shake - amp_color*er - amp_zoom * e_zoom;
+    coord.g = pixel.uv - offset_shake - amp_color*eg - (amp_zoom + amp_color_zoom*0.5) * e_zoom;
+    coord.b = pixel.uv - offset_shake - amp_color*eb - (amp_zoom + amp_color_zoom) * e_zoom;
     return coord;
 }
 

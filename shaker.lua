@@ -222,6 +222,9 @@ source_info = {
             pow_shake_lo = obs.gs_effect_get_param_by_name(data.effect, "pow_shake_lo"),
             amplitude_color = obs.gs_effect_get_param_by_name(data.effect, "amplitude_color"),
             pow_color = obs.gs_effect_get_param_by_name(data.effect, "pow_color"),
+            zoom = obs.gs_effect_get_param_by_name(data.effect, "zoom"),
+            color_zoom = obs.gs_effect_get_param_by_name(data.effect, "color_zoom"),
+            pow_zoom = obs.gs_effect_get_param_by_name(data.effect, "pow_zoom"),
             spectrum = obs.gs_effect_get_param_by_name(data.effect, "spectrum"),
         }
         return data
@@ -294,6 +297,9 @@ source_info = {
         obs.gs_effect_set_float(data.uniforms.pow_shake_lo, data.pow_shake_lo)
         obs.gs_effect_set_float(data.uniforms.amplitude_color, data.amplitude_color)
         obs.gs_effect_set_float(data.uniforms.pow_color, data.pow_color)
+        obs.gs_effect_set_float(data.uniforms.zoom, data.zoom)
+        obs.gs_effect_set_float(data.uniforms.color_zoom, data.color_zoom)
+        obs.gs_effect_set_float(data.uniforms.pow_zoom, data.pow_zoom)
 
         obs.obs_source_process_filter_end(data.source, data.effect, data.width, data.height)
     end,
@@ -309,6 +315,9 @@ source_info = {
         obs.obs_properties_add_float_slider(props, "freqY", "freqY", 0, 50, 0.01)
         obs.obs_properties_add_float_slider(props, "amplitude_color", "Amplitude(lo->color)", 0, 5, 0.01)
         obs.obs_properties_add_float_slider(props, "pow_color", "pow(lo->color)", 0, 4, 0.01)
+        obs.obs_properties_add_float_slider(props, "zoom", "zoom", 0, 1, 0.001)
+        obs.obs_properties_add_float_slider(props, "color_zoom", "color zoom", 0, 2, 0.001)
+        obs.obs_properties_add_float_slider(props, "pow_zoom", "pow(zoom)", 0, 4, 0.01)
         return props
     end,
 
@@ -322,5 +331,8 @@ source_info = {
         data.freqY = obs.obs_data_get_double(settings, "freqY")
         data.amplitude_color = obs.obs_data_get_double(settings, "amplitude_color")
         data.pow_color = obs.obs_data_get_double(settings, "pow_color")
+        data.zoom = obs.obs_data_get_double(settings, "zoom")
+        data.color_zoom = obs.obs_data_get_double(settings, "color_zoom")
+        data.pow_zoom = obs.obs_data_get_double(settings, "pow_zoom")
     end,
 }
