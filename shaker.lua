@@ -212,6 +212,7 @@ source_info = {
 
         -- Retrieves the shader uniform variables
         data.uniforms = {
+            resolution_blur = obs.gs_effect_get_param_by_name(data.effect, "resolution_blur"),
             width = obs.gs_effect_get_param_by_name(data.effect, "width"),
             height = obs.gs_effect_get_param_by_name(data.effect, "height"),
             history_height = obs.gs_effect_get_param_by_name(data.effect, "history_height"),
@@ -283,6 +284,7 @@ source_info = {
         obs.gs_effect_set_texture(data.uniforms.spectrum, summarizer_info.texture)
 
         -- Bind uniforms
+        obs.gs_effect_set_int(data.uniforms.resolution_blur, data.resolution_blur)
         obs.gs_effect_set_int(data.uniforms.width, data.width)
         obs.gs_effect_set_int(data.uniforms.height, data.height)
         obs.gs_effect_set_int(data.uniforms.history_height, summarizer_info.history_height)
@@ -298,6 +300,7 @@ source_info = {
 
     get_properties = function(_)
         local props = obs.obs_properties_create()
+        obs.obs_properties_add_int_slider(props, "resolution_blur", "Resolution(blur)", 1, 64, 1)
         obs.obs_properties_add_float_slider(props, "amplitude_hi_shake", "Amplitude(hi->shake)", 0, 5, 0.0001)
         obs.obs_properties_add_float_slider(props, "amplitude_lo_shake", "Amplitude(lo->shake)", 0, 5, 0.0001)
         obs.obs_properties_add_float_slider(props, "pow_shake_hi", "pow(hi->shake)", 0, 4, 0.01)
@@ -310,6 +313,7 @@ source_info = {
     end,
 
     update = function(data, settings)
+        data.resolution_blur = obs.obs_data_get_int(settings, "resolution_blur")
         data.amplitude_hi_shake = obs.obs_data_get_double(settings, "amplitude_hi_shake")
         data.amplitude_lo_shake = obs.obs_data_get_double(settings, "amplitude_lo_shake")
         data.pow_shake_hi = obs.obs_data_get_double(settings, "pow_shake_hi")

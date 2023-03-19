@@ -13,6 +13,7 @@ uniform int height;
 uniform int history_height;
 
 // General properties
+uniform int resolution_blur;
 uniform Texture2D spectrum;
 uniform float2 offset_hi;
 uniform float2 offset_lo;
@@ -105,11 +106,10 @@ float4 pixel_shader(pixel_data pixel) : TARGET
     Coord_rgb coord_now = shake(pixel, 0);
     Coord_rgb coord_prev = shake(pixel, 1);
 
-    const int resolution = 16;
     float3 color = float3(0, 0, 0);
-    for (int i=0; i<resolution; i++) {
+    for (int i=0; i<resolution_blur; i++) {
         Coord_rgb coord;
-        float blend = float(i)/resolution;
+        float blend = float(i)/resolution_blur;
         coord.r = coord_now.r + blend*(coord_prev.r - coord_now.r);
         coord.g = coord_now.g + blend*(coord_prev.g - coord_now.g);
         coord.b = coord_now.b + blend*(coord_prev.b - coord_now.b);
@@ -119,7 +119,7 @@ float4 pixel_shader(pixel_data pixel) : TARGET
             image.Sample(linear_clamp, coord.b).b
         );
     }
-    color /= resolution;
+    color /= resolution_blur;
     return float4(color, 1);
 }
 
